@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>25분 타임어택 해커톤 투표</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #F8FAFC;
+            background-image:
+                radial-gradient(#CBD5E1 1.5px, transparent 1.5px),
+                radial-gradient(#CBD5E1 1.5px, #F8FAFC 1.5px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .arcade-card {
+            border: 3px solid #1E293B;
+            box-shadow: 6px 6px 0px #1E293B;
+        }
+        .arcade-btn {
+            border: 3px solid #1E293B;
+            box-shadow: 4px 4px 0px #1E293B;
+            transition: all 0.1s ease;
+        }
+        .arcade-btn:active:not(:disabled) {
+            transform: translate(3px, 3px);
+            box-shadow: 1px 1px 0px #1E293B;
+        }
+        .arcade-btn:disabled {
+            opacity: 0.45;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
+        .pop {
+            animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 pb-10">
+
+    <header class="bg-white border-b-4 border-slate-800 sticky top-0 z-30">
+        <div class="max-w-md mx-auto px-4 h-16 flex items-center justify-between gap-3">
+            <h1 class="font-black text-base flex items-center gap-1.5">
+                <span class="bg-[#4285F4] text-white px-2 py-0.5 rounded-lg border-2 border-slate-800 whitespace-nowrap">⏱️ 25분 타임어택</span>
+                <span>투표</span>
+            </h1>
+            <div id="countdown" class="font-mono font-black text-lg bg-slate-900 text-[#FBBC05] px-3 py-1 rounded-xl border-2 border-slate-800">--:--</div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 mt-6">
+        <div id="view" class="arcade-card bg-white rounded-3xl p-5"></div>
+    </main>
+
+    <script type="module">
+        import { watchRoom, watchDevices, submitBallot, getDeviceId } from './vote-api.js';
+
+        const roomId = new URLSearchParams(location.search).get('room');
+        const deviceId = getDeviceId();
+        const view = document.getElementById('view');
+        const countdownEl = document.getElementById('countdown');
+        const MEDALS = ['🥇', '🥈', '🥉'];
+        const RANK_COLORS = ['bg-[#FBBC05]', 'bg-slate-300', 'bg-orange-300'];
+
+        let room = null;            // { names, voterIds, closesAtMs }
+        let devices = new Map();    // deviceId -> voterId
+        let me = null;              // 내가 고른 이름 id
+        let picks = [];             // 1·2·3등 id
+        let submitting = false;
+        let doneRecord = loadDone();
+
+        function loadDone() {
+            try { return JSON.parse(localStorage.getItem(`voted-${roomId}`)); } catch (e) { return null; }
+        }
+
+        function saveDone(record) {
+            try { localStorage.setItem(`voted-${roomId}`, JSON.stringify(record)); } catch (e) {}
+        }
+
+        function esc(str) {
+            return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function isClosed() {
+            return room && room.closesAtMs <= Date.now();
+        }
+
+        function votedIds() {
+            return new Set(devices.values());
+        }
+
+        function message(emoji, title, body) {
+            view.innerHTML = `
+                <div class="text-center py-6">
+                    <div class="text-6xl mb-3 pop">${emoji}</div>
+                    <h2 class="text-2xl font-black mb-2 break-keep">${title}</h2>
+                    <p class="text-sm font-bold text-slate-500 break-keep">${body}</p>
+                </div>`;
+        }
+
+        function render() {
+            if (!roomId) return message('🤔', '투표방 주소가 없어요', '진행자 화면의 QR을 다시 스캔해주세요.');
+            if (!room) return message('⏳', '투표방 불러오는 중...', '잠시만 기다려주세요.');
+
+            if (doneRecord) {
+                return message('🎉', '투표 완료!', `
+                    <span class="block mb-3">결과는 큰 화면의 개표 방송에서 공개돼요.</span>
+                    ${doneRecord.picks.map((name, i) => `<span class="inline-block m-1 px-3 py-1 rounded-xl border-2 border-slate-800 ${RANK_COLORS[i]} text-slate-900 font-black">${MEDALS[i]} ${esc(name)}</span>`).join('')}
+                `);
+            }
+            if (devices.has(deviceId)) return message('🙅', '이 기기에서는 이미 투표했어요', '한 기기당 한 번만 투표할 수 있어요.');
+            if (isClosed()) return message('🔒', '투표가 마감됐어요', '큰 화면을 봐주세요! 곧 개표 방송이 시작됩니다.');
+
+            if (!me) return renderPickSelf();
+            if (votedIds().has(me)) {
+                me = null;
+                picks = [];
+                return renderPickSelf('방금 그 이름으로 투표가 들어왔어요. 본인 이름이 맞는지 확인해주세요!');
+            }
+            renderPickRanks();
+        }
+
+        function renderPickSelf(warning) {
+            const voted = votedIds();
+            view.innerHTML = `
+                <p class="text-xs font-black text-purple-600 tracking-widest mb-1">STEP 1 / 2</p>
+                <h2 class="text-2xl font-black mb-1">나는 누구인가요?</h2>
+                <p class="text-sm font-bold text-slate-500 mb-4 break-keep">본인 이름을 골라주세요. 이름당 한 번만 투표할 수 있어요.</p>
+                ${warning ? `<p class="text-sm font-black text-[#EA4335] mb-3 break-keep">⚠️ ${warning}</p>` : ''}
+                <div class="grid grid-cols-2 gap-3">
+                    ${room.voterIds.map(id => {
+                        const done = voted.has(id);
+                        return `<button data-me="${id}" ${done ? 'disabled' : ''} class="arcade-btn ${done ? 'bg-slate-100' : 'bg-white'} rounded-2xl py-4 px-2 font-black text-lg break-keep">
+                            ${esc(room.names[id])}
+                            ${done ? '<span class="block text-xs font-bold text-[#34A853]">✅ 투표 완료</span>' : ''}
+                        </button>`;
+                    }).join('')}
+                </div>`;
+            view.querySelectorAll('[data-me]').forEach(btn => btn.onclick = () => {
+                me = btn.dataset.me;
+                picks = [];
+                render();
+            });
+        }
+
+        function renderPickRanks() {
+            const candidates = room.voterIds.filter(id => id !== me);
+            view.innerHTML = `
+                <div class="flex items-center justify-between mb-1">
+                    <p class="text-xs font-black text-purple-600 tracking-widest">STEP 2 / 2</p>
+                    <button id="backBtn" class="text-xs font-bold text-slate-400 underline">← ${esc(room.names[me])}님이 아니에요</button>
+                </div>
+                <h2 class="text-2xl font-black mb-1">1·2·3등을 골라주세요</h2>
+                <p class="text-sm font-bold text-slate-500 mb-4 break-keep">🥇 1등부터 순서대로 탭하세요. 다시 탭하면 취소돼요.</p>
+
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    ${[0, 1, 2].map(i => `
+                        <div class="border-[3px] border-slate-800 rounded-2xl p-2 text-center ${picks[i] ? RANK_COLORS[i] : 'bg-slate-50 border-dashed'}">
+                            <div class="text-xs font-black">${MEDALS[i]} ${3 - i}점</div>
+                            <div class="font-black text-sm truncate ${picks[i] ? '' : 'text-slate-300'}">${picks[i] ? esc(room.names[picks[i]]) : '?'}</div>
+                        </div>`).join('')}
+                </div>
+
+                <div class="space-y-2.5 mb-5">
+                    ${candidates.map(id => {
+                        const rank = picks.indexOf(id);
+                        return `<button data-pick="${id}" class="arcade-btn w-full rounded-2xl py-3.5 px-4 flex items-center justify-between font-black text-lg ${rank >= 0 ? RANK_COLORS[rank] : 'bg-white'}">
+                            <span class="truncate">${esc(room.names[id])}</span>
+                            <span class="text-2xl">${rank >= 0 ? MEDALS[rank] : ''}</span>
+                        </button>`;
+                    }).join('')}
+                </div>
+
+                <button id="submitBtn" ${picks.length === 3 && !submitting ? '' : 'disabled'} class="arcade-btn w-full bg-purple-600 text-white rounded-2xl py-4 font-black text-xl">
+                    ${submitting ? '제출 중...' : picks.length === 3 ? '🗳️ 투표 제출하기' : `${3 - picks.length}명 더 골라주세요`}
+                </button>`;
+
+            view.querySelector('#backBtn').onclick = () => {
+                me = null;
+                picks = [];
+                render();
+            };
+            view.querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => {
+                const id = btn.dataset.pick;
+                const idx = picks.indexOf(id);
+                if (idx >= 0) picks.splice(idx, 1);
+                else if (picks.length < 3) picks.push(id);
+                if (navigator.vibrate) navigator.vibrate(15);
+                render();
+            });
+            view.querySelector('#submitBtn').onclick = submit;
+        }
+
+        async function submit() {
+            if (submitting || picks.length !== 3) return;
+            const summary = picks.map((id, i) => `${MEDALS[i]} ${room.names[id]}`).join('\n');
+            if (!confirm(`${room.names[me]}님의 투표\n\n${summary}\n\n제출하면 바꿀 수 없어요. 제출할까요?`)) return;
+
+            submitting = true;
+            render();
+            try {
+                await submitBallot(roomId, me, picks);
+                doneRecord = { voter: room.names[me], picks: picks.map(id => room.names[id]) };
+                saveDone(doneRecord);
+                if (typeof confetti === 'function') confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+            } catch (e) {
+                console.error(e);
+                if (isClosed()) alert('😢 투표가 마감됐어요.');
+                else if (devices.has(deviceId)) alert('이 기기에서는 이미 투표했어요.');
+                else if (votedIds().has(me)) alert(`${room.names[me]}님 이름으로 이미 투표가 들어왔어요. 진행자에게 알려주세요!`);
+                else alert('투표를 보내지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.');
+            }
+            submitting = false;
+            render();
+        }
+
+        function tick() {
+            if (!room) return;
+            const sec = Math.max(0, Math.ceil((room.closesAtMs - Date.now()) / 1000));
+            countdownEl.textContent = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+            countdownEl.classList.toggle('text-[#EA4335]', sec <= 10);
+            // 마감되는 순간 화면 전환 (투표 중이던 화면은 제출 중이 아닐 때만)
+            if (sec === 0 && !doneRecord && !submitting && !view.dataset.closed) {
+                view.dataset.closed = '1';
+                render();
+            }
+            if (sec > 0 && view.dataset.closed) {
+                delete view.dataset.closed;
+                render();
+            }
+        }
+
+        if (roomId) {
+            watchRoom(roomId, info => {
+                if (!info) return message('🤔', '투표방을 찾을 수 없어요', 'QR을 다시 스캔해주세요.');
+                room = info;
+                render();
+                tick();
+            }, () => message('📡', '연결에 실패했어요', '인터넷 연결을 확인하고 새로고침해주세요.'));
+            watchDevices(roomId, map => {
+                devices = map;
+                // 투표 화면에서 고르는 중에는 다시 그리지 않음 (선택 유지)
+                if (!me || votedIds().has(me) || devices.has(deviceId)) render();
+            });
+            setInterval(tick, 500);
+        }
+        render();
+    </script>
+</body>
+</html>

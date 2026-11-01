@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GDGOC 25분 해커톤 아이디어 가챠</title>
+    <title>25분 타임어택 해커톤</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
     <!-- Google Fonts & Pretendard -->
@@ -166,9 +168,9 @@
                     <span class="w-4 h-4 rounded-full bg-[#FBBC05] border-2 border-slate-800 inline-block"></span>
                     <span class="w-4 h-4 rounded-full bg-[#34A853] border-2 border-slate-800 inline-block"></span>
                 </div>
-                <h1 class="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
-                    <span>GDGOC</span>
-                    <span class="bg-[#4285F4] text-white px-2.5 py-0.5 rounded-lg border-2 border-slate-800 text-base sm:text-lg shadow-[2px_2px_0px_#1E293B]">25분 나만의 서비스 만들기</span>
+                <h1 class="text-lg sm:text-2xl font-black tracking-tight flex items-center gap-2">
+                    <span class="bg-[#4285F4] text-white px-2.5 py-0.5 rounded-lg border-2 border-slate-800 shadow-[2px_2px_0px_#1E293B] whitespace-nowrap">⏱️ 25분 타임어택 해커톤</span>
+                    <span class="hidden md:inline text-base text-slate-500 font-extrabold">나만의 서비스 만들기</span>
                 </h1>
             </div>
 
@@ -410,6 +412,30 @@
                 </div>
             </div>
 
+            <!-- QR Mobile Vote Launcher -->
+            <div class="bg-purple-50 border-[3px] border-slate-800 rounded-2xl p-4 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="space-y-0.5">
+                    <p class="font-black text-purple-900 flex items-center gap-1.5">
+                        <i class="ph-fill ph-qr-code text-xl"></i> QR 모바일 투표
+                        <span class="text-[10px] font-black bg-purple-600 text-white px-1.5 py-0.5 rounded">추천</span>
+                    </p>
+                    <p class="text-xs font-bold text-slate-600 break-keep">
+                        QR을 띄우면 참가자들이 각자 폰으로 1·2·3등을 고릅니다. 이름당 1표, 기기당 1표만 받고, 타이머가 끝나면 서버에서 투표가 막혀요. 결과는 자동으로 블라인드 집계됩니다.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <select id="qrDurationSelect" class="border-[3px] border-slate-800 rounded-xl px-2 py-1.5 text-sm font-black bg-white">
+                        <option value="1">1분</option>
+                        <option value="2" selected>2분</option>
+                        <option value="3">3분</option>
+                        <option value="5">5분</option>
+                    </select>
+                    <button onclick="openQrVote()" class="arcade-btn bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-black text-sm flex items-center gap-1.5">
+                        <i class="ph-bold ph-qr-code text-lg"></i> QR 투표 열기
+                    </button>
+                </div>
+            </div>
+
             <!-- Progress & Help -->
             <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <p id="voteHelpText" class="text-xs sm:text-sm font-bold text-slate-600 break-keep"></p>
@@ -439,6 +465,63 @@
             </div>
         </div>
     </section>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+        <div class="border-t-4 border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm font-bold text-slate-600">
+            <div class="flex items-center gap-2">
+                <div class="flex space-x-1">
+                    <span class="w-3 h-3 rounded-full bg-[#4285F4] border-2 border-slate-800 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-[#EA4335] border-2 border-slate-800 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-[#FBBC05] border-2 border-slate-800 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-[#34A853] border-2 border-slate-800 inline-block"></span>
+                </div>
+                <span class="font-black text-slate-800">GDGoC KNU</span>
+                <span class="text-slate-400">·</span>
+                <span>25분 타임어택 해커톤</span>
+            </div>
+            <a href="https://github.com/hyeseon-cpu" target="_blank" rel="noopener" class="arcade-btn bg-white hover:bg-slate-100 text-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <i class="ph-fill ph-github-logo text-lg"></i>
+                <span>github.com/hyeseon-cpu</span>
+            </a>
+        </div>
+    </footer>
+
+    <!-- QR Vote Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-[55] hidden items-center justify-center p-4">
+        <div class="arcade-card bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 sm:p-8 relative">
+            <button onclick="hideQrModal()" class="absolute top-3 right-5 text-slate-400 hover:text-slate-800 text-3xl leading-none" title="창 닫기 (투표는 계속 진행)">&times;</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div class="flex flex-col items-center text-center">
+                    <p class="text-xs font-black tracking-widest text-purple-600 uppercase mb-2">📱 폰 카메라로 스캔하세요</p>
+                    <div id="qrBox" class="bg-white border-[3px] border-slate-800 rounded-2xl p-4 w-[272px] h-[272px] flex items-center justify-center"></div>
+                    <a id="qrLink" href="#" target="_blank" rel="noopener" class="mt-3 text-xs font-bold text-slate-500 underline break-all"></a>
+                </div>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <h3 class="text-2xl font-black text-slate-800">1·2·3등을 골라주세요 🗳️</h3>
+                        <p class="text-sm font-bold text-slate-500 break-keep">본인은 뽑을 수 없어요. 이름당 1표, 시간이 끝나면 자동 마감!</p>
+                    </div>
+                    <div id="qrTimerBox" class="bg-slate-900 border-[3px] border-slate-800 rounded-2xl py-3 text-center">
+                        <div id="qrTimer" class="text-5xl font-black font-mono text-[#FBBC05]">02:00</div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-black text-slate-500 mb-2">투표 현황 <span id="qrProgress" class="text-purple-600">0/5</span></p>
+                        <div id="qrVoterList" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="qrExtendBtn" onclick="extendQrVote()" class="arcade-btn bg-white hover:bg-slate-100 text-slate-800 font-black py-2.5 rounded-xl flex items-center justify-center gap-1.5">
+                            <i class="ph-bold ph-plus"></i> 1분 연장
+                        </button>
+                        <button id="qrCloseBtn" onclick="closeQrVote()" class="arcade-btn bg-[#EA4335] hover:bg-red-600 text-white font-black py-2.5 rounded-xl flex items-center justify-center gap-1.5">
+                            <i class="ph-bold ph-lock"></i> 지금 마감
+                        </button>
+                    </div>
+                    <p id="qrStatusText" class="text-xs font-bold text-slate-500 break-keep"></p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Award Ceremony Modal -->
     <div id="awardModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
@@ -1714,11 +1797,269 @@
             });
         }
 
+        // ==========================================
+        // 11. QR MOBILE VOTE (Firestore)
+        // ==========================================
+        const QR_STORAGE_KEY = 'gdgoc-hackathon-qr-v1';
+        let voteApi = null;
+        let qrRoom = null;       // { roomId, key, done }
+        let qrRoomInfo = null;   // { names, voterIds, closesAtMs }
+        let qrBallots = [];
+        let qrUnsubs = [];
+        let qrTickTimer = null;
+        let qrFinalizing = false;
+        let qrBusy = false;
+        let qrLastBeepSec = null;
+
+        function saveQrState() {
+            try {
+                if (qrRoom) localStorage.setItem(QR_STORAGE_KEY, JSON.stringify(qrRoom));
+                else localStorage.removeItem(QR_STORAGE_KEY);
+            } catch (e) {}
+        }
+
+        function loadQrState() {
+            try {
+                const s = JSON.parse(localStorage.getItem(QR_STORAGE_KEY));
+                if (s && s.roomId && s.key) qrRoom = s;
+            } catch (e) {}
+        }
+
+        async function loadVoteApi() {
+            if (voteApi) return voteApi;
+            if (location.protocol === 'file:') {
+                throw new Error('QR 투표는 GitHub Pages 주소(웹)에서 열어야 동작해요!');
+            }
+            voteApi = await import('./vote-api.js');
+            return voteApi;
+        }
+
+        function qrVoteUrl(roomId) {
+            return new URL(`vote.html?room=${roomId}`, location.href).href;
+        }
+
+        function showQrModal() {
+            const modal = document.getElementById('qrModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function hideQrModal() {
+            const modal = document.getElementById('qrModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (qrRoom && !qrRoom.done) showToast('📱 투표는 계속 진행 중이에요. "QR 투표 열기"로 다시 볼 수 있어요');
+        }
+
+        async function openQrVote() {
+            if (qrBusy) return;
+            // 진행 중인 투표가 있으면 창만 다시 띄우기
+            if (qrRoom && !qrRoom.done && qrUnsubs.length) {
+                showQrModal();
+                return;
+            }
+
+            const names = participants.map(p => p.name.trim());
+            if (names.some(n => !n) || new Set(names).size !== names.length) {
+                showToast('참가자 이름이 비어 있거나 겹쳐요. 이름을 먼저 정리해주세요!');
+                return;
+            }
+            if (votes.length && !confirm('이미 입력된 표가 있어요. QR 투표 결과로 바꿀까요?')) return;
+
+            qrBusy = true;
+            try {
+                const api = await loadVoteApi();
+                const minutes = Number(document.getElementById('qrDurationSelect').value) || 2;
+                const room = await api.createRoom(participants, minutes);
+                stopQrWatch();
+                qrRoom = { ...room, done: false };
+                qrRoomInfo = null;
+                qrBallots = [];
+                saveQrState();
+                startQrWatch();
+                showQrModal();
+                playWinSound();
+            } catch (e) {
+                console.error(e);
+                showToast(e.message && e.message.includes('GitHub Pages') ? e.message : '😢 투표방을 만들지 못했어요. 인터넷 연결을 확인해주세요');
+            } finally {
+                qrBusy = false;
+            }
+        }
+
+        function renderQrCode(roomId) {
+            const url = qrVoteUrl(roomId);
+            const box = document.getElementById('qrBox');
+            box.innerHTML = '';
+            if (typeof QRCode === 'function') {
+                new QRCode(box, { text: url, width: 236, height: 236, correctLevel: QRCode.CorrectLevel.M });
+            } else {
+                box.textContent = 'QR을 불러오지 못했어요. 아래 링크를 공유하세요.';
+            }
+            const link = document.getElementById('qrLink');
+            link.href = url;
+            link.textContent = url;
+        }
+
+        function startQrWatch() {
+            const api = voteApi;
+            renderQrCode(qrRoom.roomId);
+            qrFinalizing = false;
+            qrLastBeepSec = null;
+            const roomId = qrRoom.roomId;
+            qrUnsubs.push(api.watchRoom(roomId, info => {
+                if (!qrRoom || qrRoom.roomId !== roomId) return;
+                if (!info) {
+                    showToast('투표방을 찾을 수 없어요');
+                    return;
+                }
+                qrRoomInfo = info;
+                renderQrPanel();
+            }, err => console.error(err)));
+            qrUnsubs.push(api.watchBallots(roomId, list => {
+                if (!qrRoom || qrRoom.roomId !== roomId) return;
+                const before = qrBallots.length;
+                qrBallots = list;
+                if (list.length > before && !qrRoom.done) playTickSound(900);
+                renderQrPanel();
+                // 전원 투표 완료 → 바로 마감
+                if (!qrRoom.done && qrRoomInfo && list.length >= qrRoomInfo.voterIds.length) {
+                    closeQrVote(true);
+                }
+            }, err => console.error(err)));
+            clearInterval(qrTickTimer);
+            qrTickTimer = setInterval(qrTick, 250);
+        }
+
+        function stopQrWatch() {
+            qrUnsubs.forEach(unsub => unsub());
+            qrUnsubs = [];
+            clearInterval(qrTickTimer);
+            qrTickTimer = null;
+        }
+
+        function qrRemainingMs() {
+            return qrRoomInfo ? qrRoomInfo.closesAtMs - Date.now() : null;
+        }
+
+        function qrTick() {
+            if (!qrRoom || !qrRoomInfo) return;
+            const remain = qrRemainingMs();
+            const timerEl = document.getElementById('qrTimer');
+            const sec = Math.max(0, Math.ceil(remain / 1000));
+            timerEl.textContent = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+            timerEl.classList.toggle('text-[#EA4335]', sec <= 10);
+            timerEl.classList.toggle('text-[#FBBC05]', sec > 10);
+            if (!qrRoom.done && sec <= 10 && sec > 0 && qrLastBeepSec !== sec) {
+                qrLastBeepSec = sec;
+                playTickSound(880);
+            }
+            if (!qrRoom.done && remain <= 0) finalizeQrVote();
+        }
+
+        function renderQrPanel() {
+            if (!qrRoom) return;
+            const voted = new Set(qrBallots.map(b => b.voter));
+            const list = document.getElementById('qrVoterList');
+            list.innerHTML = participants.map(p => {
+                const done = voted.has(String(p.id));
+                return `<span class="text-sm font-black px-3 py-1.5 rounded-xl border-2 border-slate-800 ${done ? 'bg-[#34A853] text-white' : 'bg-slate-100 text-slate-500'}">${done ? '✅' : '⏳'} ${escapeHtml(p.name)}</span>`;
+            }).join('');
+            document.getElementById('qrProgress').textContent = `${voted.size}/${participants.length}`;
+
+            const closed = qrRoom.done || (qrRoomInfo && qrRemainingMs() <= 0);
+            document.getElementById('qrExtendBtn').disabled = closed;
+            const closeBtn = document.getElementById('qrCloseBtn');
+            if (qrRoom.done) {
+                closeBtn.innerHTML = '<i class="ph-bold ph-arrow-right"></i> 집계판으로';
+                closeBtn.onclick = () => {
+                    hideQrModal();
+                    document.getElementById('voteBoard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                };
+            } else {
+                closeBtn.innerHTML = '<i class="ph-bold ph-lock"></i> 지금 마감';
+                closeBtn.onclick = () => closeQrVote(false);
+            }
+            document.getElementById('qrStatusText').textContent = qrRoom.done
+                ? `🔒 투표 마감! ${qrBallots.length}장이 블라인드로 집계판에 들어갔어요. 창을 닫고 개표 방송을 시작하세요.`
+                : '🤫 누가 누구를 뽑았는지는 개표 방송 전까지 비공개예요.';
+        }
+
+        async function extendQrVote() {
+            if (!qrRoom || qrRoom.done || !qrRoomInfo || qrBusy) return;
+            qrBusy = true;
+            try {
+                qrRoom = await voteApi.extendRoom(qrRoom, qrRoomInfo.closesAtMs, 60000);
+                saveQrState();
+                showToast('⏱️ 투표 시간 1분 연장!');
+            } catch (e) {
+                console.error(e);
+                showToast('연장하지 못했어요. 다시 시도해주세요');
+            } finally {
+                qrBusy = false;
+            }
+        }
+
+        async function closeQrVote(auto) {
+            if (!qrRoom || qrRoom.done || qrBusy) return;
+            if (!auto && !confirm('지금 투표를 마감할까요?')) return;
+            qrBusy = true;
+            try {
+                qrRoom = await voteApi.closeRoomNow(qrRoom);
+                saveQrState();
+                if (auto) showToast('🎉 전원 투표 완료! 자동으로 마감합니다');
+            } catch (e) {
+                console.error(e);
+                showToast('마감하지 못했어요. 다시 시도해주세요');
+                qrBusy = false;
+                return;
+            }
+            qrBusy = false;
+            finalizeQrVote();
+        }
+
+        // 마감 직전에 들어온 표까지 받도록 잠깐 기다렸다가 집계판에 반영
+        function finalizeQrVote() {
+            if (qrFinalizing || !qrRoom || qrRoom.done) return;
+            qrFinalizing = true;
+            playAlarmSound();
+            document.getElementById('qrStatusText').textContent = '🔒 마감! 마지막 표를 모으는 중...';
+            setTimeout(() => {
+                const validIds = new Set(participants.map(p => String(p.id)));
+                votes = [];
+                [...qrBallots].sort((a, b) => a.atMs - b.atMs).forEach(b => {
+                    if (!Array.isArray(b.picks)) return;
+                    b.picks.slice(0, 3).forEach((pid, i) => {
+                        if (validIds.has(String(pid))) votes.push({ pid: Number(pid), pts: 3 - i });
+                    });
+                });
+                voteMode = 'blind';
+                broadcastScores = null;
+                broadcastHeld = false;
+                qrRoom.done = true;
+                saveQrState();
+                stopQrWatch();
+                renderVoteBoard();
+                renderQrPanel();
+                saveState();
+                fireConfetti();
+                showToast(`🗳️ QR 투표 ${qrBallots.length}장 집계 완료! 개표 방송을 시작하세요`);
+            }, 1500);
+        }
+
         // Initialize on load
         window.onload = function() {
             loadState();
             renderParticipants();
             updateTimerDisplay();
+            // 새로고침해도 진행 중이던 QR 투표에 다시 연결
+            loadQrState();
+            if (qrRoom && !qrRoom.done) {
+                loadVoteApi().then(() => {
+                    startQrWatch();
+                    showToast('📱 진행 중이던 QR 투표에 다시 연결했어요');
+                }).catch(() => {});
+            }
         };
     </script>
 </body>

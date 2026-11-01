@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// QR 모바일 투표 보안 규칙
+// - 투표지 문서 ID = 투표자 이름(참가자 id) → 이름당 1표 (덮어쓰기 불가)
+// - 기기 문서 ID = 브라우저 기기 id → 기기당 1표
+// - closesAt 이후의 투표는 서버가 거절 (타이머 마감)
+// - 마감/연장은 진행자만 아는 key로만 가능 (쓸 때마다 다음 key의 해시로 교체)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function roomPath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId);
+    }
+    function roomData(roomId) {
+      return get(roomPath(roomId)).data;
+    }
+
+    match /rooms/{roomId} {
+      allow get: if true;
+      allow list: if false;
+
+      allow create: if request.resource.data.keys().hasOnly(['names', 'voterIds', 'closesAt', 'keyHash', 'createdAt'])
+        && request.resource.data.names is map
+        && request.resource.data.voterIds is list
+        && request.resource.data.voterIds.size() >= 4
+        && request.resource.data.voterIds.size() <= 30
+        && request.resource.data.closesAt is timestamp
+        && request.resource.data.closesAt > request.time
+        && request.resource.data.closesAt < request.time + duration.value(70, 'm')
+        && request.resource.data.keyHash is string
+        && request.resource.data.keyHash.size() == 64
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['closesAt', 'key', 'keyHash'])
+        && request.resource.data.key is string
+        && hashing.sha256(request.resource.data.key).toHexString().lower() == resource.data.keyHash
+        && request.resource.data.keyHash is string
+        && request.resource.data.keyHash.size() == 64
+        && request.resource.data.closesAt is timestamp
+        && request.resource.data.closesAt < request.time + duration.value(70, 'm');
+
+      allow delete: if false;
+
+      match /ballots/{voterId} {
+        allow read: if true;
+
+        allow create: if request.time < roomData(roomId).closesAt
+          && voterId in roomData(roomId).voterIds
+          && request.resource.data.keys().hasOnly(['picks', 'device', 'at'])
+          && request.resource.data.at == request.time
+          && request.resource.data.picks is list
+          && request.resource.data.picks.size() == 3
+          && request.resource.data.picks[0] != request.resource.data.picks[1]
+          && request.resource.data.picks[0] != request.resource.data.picks[2]
+          && request.resource.data.picks[1] != request.resource.data.picks[2]
+          && roomData(roomId).voterIds.hasAll(request.resource.data.picks)
+          && !(voterId in request.resource.data.picks)
+          && request.resource.data.device is string
+          && request.resource.data.device.size() >= 16
+          && request.resource.data.device.size() <= 64
+          && !exists(/databases/$(database)/documents/rooms/$(roomId)/devices/$(request.resource.data.device))
+          && getAfter(/databases/$(database)/documents/rooms/$(roomId)/devices/$(request.resource.data.device)).data.voter == voterId;
+
+        allow update, delete: if false;
+      }
+
+      match /devices/{deviceId} {
+        allow read: if true;
+
+        allow create: if request.resource.data.keys().hasOnly(['voter'])
+          && request.resource.data.voter is string
+          && !exists(/databases/$(database)/documents/rooms/$(roomId)/ballots/$(request.resource.data.voter))
+          && getAfter(/databases/$(database)/documents/rooms/$(roomId)/ballots/$(request.resource.data.voter)).data.device == deviceId;
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}
